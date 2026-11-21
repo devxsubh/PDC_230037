@@ -1,0 +1,20 @@
+# Ablation: the full agent (iterative retrieval + verification) but it always answers with
+# its best verified candidate. Compared with agent_offline.toml it isolates abstention;
+# compared with agent_single_pass.toml it isolates iteration and verification.
+experiment_name = "agent-no-abstention-v1"
+
+[agent]
+retriever = "bm25"
+proposer = "template"
+
+[retrieval]
+initial_k = 5
+k_step = 5
+max_rounds = 3
+
+[verification]
+verify = true
+max_candidates_verified = 12
+
+[abstention]
+abstain = false

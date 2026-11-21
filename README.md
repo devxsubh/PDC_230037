@@ -1,12 +1,14 @@
-# FinEvidence
+# FinEvidence: Agentic Financial Research Assistant
 
 FinEvidence answers numerical questions about financial reports and shows its work. For each question it retrieves the supporting table rows and sentences, generates an executable calculation program, and runs that program safely. The answer comes back with its evidence and its calculation, so an analyst can check it.
+
+On top of that pipeline, the **agentic research assistant** (`finevidence.agent`) plans each question as a multi-step research task. It retrieves evidence iteratively, calculates only through controlled tools, verifies every candidate answer, and abstains when the evidence is insufficient, ambiguous or conflicting. Each answer carries source citations, a step-by-step calculation trace and a log of every tool call. See [docs/agentic-assistant.md](docs/agentic-assistant.md).
 
 It is built and evaluated on [FinQA](https://github.com/czyssrs/FinQA): 8,281 questions written by finance experts over S&P 500 earnings reports. This repository contains code, configuration, notebooks and aggregate results only. Data and model weights are downloaded or trained locally and never committed.
 
 ## Status
 
-M1–M3 are complete and awaiting review; M4 (evaluation and optimization) is next. See [docs/milestone-status.md](docs/milestone-status.md) for every deliverable and its evidence.
+M1–M3 are complete and awaiting review; M4 is in progress (error analysis and improvement iteration 1 done, dev 61.95%). The agentic research assistant (PDC enhancement) is implemented and evaluated on dev. See [docs/milestone-status.md](docs/milestone-status.md) for every deliverable and its evidence.
 
 **Dev results** (883 questions, official FinQA execution accuracy, bootstrap 95% CI):
 
@@ -17,6 +19,31 @@ M1–M3 are complete and awaiting review; M4 (evaluation and optimization) is ne
 | Same generator given only the gold facts (diagnostic) | 65.46% | 61.83% |
 
 The retriever finds every gold fact in its top 5 for 87.0% of dev questions (TF-IDF: 66.0%). These are dev numbers from dev-selected checkpoints; the single held-out test evaluation is reserved for M4.
+
+## Agentic research assistant
+
+```bash
+finevidence-agent ask --split dev --index 3          # research report in Markdown
+finevidence-agent ask --record my_report.json --json # your own report: question, table, pre_text, post_text
+finevidence-agent evaluate --split dev               # pipeline vs ablations vs agent
+```
+
+```
+question ─► plan ─► search evidence ─► read values ─► propose program ─► calculate + verify ─► answer or abstain
+                          ▲                                                                │
+                          └──────────── refine queries, widen retrieval (≤ 3 rounds) ◄──────┘
+```
+
+**Dev results** (883 questions; offline backends: BM25 retrieval and the plan-driven template proposer; rules and thresholds set on train):
+
+| System | Exec acc | Coverage | Selective acc | Wrong-answer rate | Cites all gold | ms / q |
+| --- | --- | --- | --- | --- | --- | --- |
+| Existing pipeline, conservative arithmetic | 3.96% | 32.2% | 12.3% | 28.2% | 39.1% | 0.5 |
+| Agent, single pass | 22.54% | 70.6% | 31.9% | 48.0% | 51.7% | 0.9 |
+| Agent, iterative + verified, no abstention | **24.92%** | 76.2% | 32.7% | 51.3% | 50.1% | 1.4 |
+| **Agent, full** | 20.50% | 50.7% | **40.4%** | **30.2%** | **59.6%** | 2.2 |
+
+Compared with a single pass on the same questions, iterative retrieval plus verification fixes 23 answers and breaks 2. Abstention then avoids 166 wrong answers and adds 9, at the cost of 32 correct answers withheld (exact McNemar p ≈ 2e-38 for the wrong-answer reduction). The template proposer caps absolute accuracy. The same loop can verify the trained T5 generator's beams (`configs/agent_generator.toml`), but that run needs the saved Notebook 10/14 artifacts and has not been executed yet.
 
 ## Setup
 
@@ -64,6 +91,7 @@ Every executed run is recorded in [docs/experiment-log.md](docs/experiment-log.m
 | [m2-data-findings.md](docs/m2-data-findings.md) | Measured M2 audit findings |
 | [preprocessing-plan.md](docs/preprocessing-plan.md) | Field contract and preprocessing decisions |
 | [evaluation-plan.md](docs/evaluation-plan.md) | Split protocol, metric definitions, experiment protocols |
+| [agentic-assistant.md](docs/agentic-assistant.md) | Agentic research assistant: loop, tools, verification, abstention, evaluation and results |
 | [architecture.md](docs/architecture.md) | Pipeline and module responsibilities |
 | [finqanet-baseline-plan.md](docs/finqanet-baseline-plan.md) | Design and step record for the retriever + generator |
 | [experiment-log.md](docs/experiment-log.md) | Every executed experiment |
@@ -77,9 +105,10 @@ Every executed run is recorded in [docs/experiment-log.md](docs/experiment-log.m
 ## Layout
 
 ```text
-src/finevidence/   data, retrieval, generation, reasoning, evaluation packages
+src/finevidence/   data, retrieval, generation, reasoning, evaluation, agent packages
+  agent/           planner, tools, evidence, proposers, verifier, controller, report, cli
 tests/             unit tests for reusable behavior
-configs/           versioned experiment configurations
+configs/           versioned experiment and agent configurations (agent_*.toml)
 notebooks/         numbered, executed research record
 docs/              project, data, evaluation and milestone records
 data/, models/     local data and checkpoints (Git-ignored)

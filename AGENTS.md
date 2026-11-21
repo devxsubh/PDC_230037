@@ -2,11 +2,12 @@
 
 ## Project purpose
 
-FinEvidence researches evidence-grounded financial question answering with numerical reasoning over financial-report tables and narrative text. The intended pipeline is modular NLP/ML software, not a collection of autonomous application agents. The primary dataset target is FinQA; its exact downloaded schema, license, and statistics must be verified from the acquired version before being stated as facts.
+FinEvidence researches evidence-grounded financial question answering with numerical reasoning over financial-report tables and narrative text. It is modular NLP/ML software: a tested single-pass pipeline, plus an agentic research layer (`finevidence.agent`) that plans questions, calls the pipeline's modules as controlled tools, verifies answers and abstains. The agent is a bounded, deterministic loop over those tools, not free-form autonomous code execution. The primary dataset target is FinQA; its exact downloaded schema, license, and statistics must be verified from the acquired version before being stated as facts.
 
 ## Repository map
 
-- `src/finevidence/`: reusable implementation. `data` validates and loads local data; later modules will own preprocessing, retrieval, reasoning, evaluation, and shared utilities.
+- `src/finevidence/`: reusable implementation. `data` (loading, validation, preprocessing), `retrieval`, `generation`, `reasoning` (safe executor), `evaluation` (metrics), and `agent` (planner, tools, proposers, verifier, research loop, report, `finevidence-agent` CLI; see `docs/agentic-assistant.md`).
+- Agent rule: every agent tool must be built from `build_structured_input` and all arithmetic must go through `execute_program`. Agent rules and thresholds are chosen on train, never on dev or test.
 - `notebooks/`: numbered research record. Keep notebooks linear, executable, and tied to an observed dataset or experiment.
 - `tests/`: fast tests for stable reusable behavior.
 - `configs/`: non-secret, versioned experiment settings.

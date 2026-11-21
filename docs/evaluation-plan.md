@@ -50,5 +50,9 @@ All predictions use only `id`, `question`, `table`, `pre_text` and `post_text` (
 - Categorized error analysis: retrieval, operand selection, period/unit interpretation, multi-step composition, ambiguity and other observed categories. **Done** (Notebook 13): rule-based categories for all 360 errors (`categorize_error`) and a manual review of a fixed 40-error sample for ambiguity and gold-label quality ([m4-ambiguity-review.csv](m4-ambiguity-review.csv)).
 - Improvement iterations. **Iteration 1 done** (Notebook 14): grounded beam selection adopted (dev 0.6195 vs 0.5923, 24 fixed / 0 broken); fewer input facts rejected. Iteration 2: retraining with retrieved-style hard distractors (GPU).
 - Robustness checks for question rewording, reporting-period and unit perturbations.
-- Abstention: a confidence signal, calibrated on dev, reported as accuracy against coverage.
+- Abstention: a confidence signal reported as accuracy against coverage. **Implemented** by the agentic layer, with the policy chosen on train ([agentic-assistant.md](agentic-assistant.md)).
 - Inference record: per-question latency and cost under a documented setup.
+
+## Agentic assistant metrics
+
+`finevidence.evaluation.agentic` scores the agent and the single-pass pipeline identically: execution accuracy over all records (abstention = incorrect) with a bootstrap 95% CI, coverage, selective accuracy, wrong-answer rate, best-effort accuracy (withheld answers included), evidence completeness of answered questions (cites all gold, gold recall, citation precision), tool calls, retrieval rounds and latency, plus a risk-coverage sweep over the support threshold. Systems are compared pairwise on the same records (exact McNemar). Agent rules and thresholds are chosen on train; dev is the evaluation split. Protocol and results: [agentic-assistant.md](agentic-assistant.md).

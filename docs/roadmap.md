@@ -23,6 +23,10 @@ FinEvidence follows the six-stage Industry Track. The detailed objectives, deliv
 - **Known limitations and risks.** Checkpoints were selected on dev and reported on dev. Each result is a single seed on one GPU type. The retriever checkpoint was not kept, so it must be retrained at `7028afc` before test-time retrieval.
 - **M4 entry condition.** M3 results reviewed; test split still untouched. First M4 task: categorized error analysis of the 360 dev errors (retrieval, operand selection, period/unit, multi-step composition, ambiguity), then robustness checks. The single test evaluation happens only after these decisions are fixed.
 
+## PDC enhancement: Agentic Financial Research Assistant (2026-11-21)
+
+The agentic layer (`finevidence.agent`) is implemented, tested and evaluated on dev against the single-pass pipeline ([agentic-assistant.md](agentic-assistant.md), experiment log 2026-11-21). The full agent cuts the dev wrong-answer rate from 48.0% (single pass) to 30.2% and raises selective accuracy from 31.9% to 40.4%; iteration plus verification alone adds 2.4 points of execution accuracy. Next: run the agent over the saved T5 beams (`configs/agent_generator.toml`) to compare with the 61.95% pipeline under identical generation.
+
 ## Immediate next task
 
 M4 has started. The categorized dev error analysis is executed ([Notebook 13](../notebooks/13_error_analysis.ipynb)): 272 of 360 errors occur with all gold facts retrieved, and the gold-facts oracle mostly helps by removing distractors. A manual review of 40 sampled errors found 14 (35%, CI 22–50%) that are ambiguous questions, debatable gold labels or convention mismatches. Improvement iteration 1 ([Notebook 14](../notebooks/14_inference_iteration.ipynb)) adopted grounded beam selection: dev execution accuracy 61.95% (from 59.23%; 24 fixed, 0 broken). Passing fewer facts was rejected. Next: iteration 2, retraining the generator with hard distractors ([Notebook 15](../notebooks/15_hard_distractor_generator.ipynb), `configs/generator_t5_base_hard.toml`); prepared and smoke-tested, GPU run pending. The official test split stays reserved for the final M4 run.

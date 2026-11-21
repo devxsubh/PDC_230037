@@ -1,0 +1,24 @@
+# Agentic research assistant, offline: BM25 retrieval + plan-driven template proposer.
+# Planner rules and these thresholds were set on train-split questions only. Dev is the
+# evaluation split; the official test split is not loaded.
+experiment_name = "agent-offline-v1"
+
+[agent]
+retriever = "bm25"            # "bm25" | "ranking-file" (Notebook 10 cross-encoder rankings)
+proposer = "template"         # "template" | "generator-beams" (Notebook 14 T5 candidates)
+
+[retrieval]
+initial_k = 5                 # segments retrieved in round 1
+k_step = 5                    # added per refinement round
+max_rounds = 3                # round 1 = question; later rounds = entity + period sub-queries
+
+[verification]
+verify = true
+max_candidates_verified = 12
+
+[abstention]
+abstain = true
+min_confidence = 0.60        # chosen on train records 1000-1999 (see experiment log)
+ambiguity_margin = 0.01       # abstain if a different-valued rival is this close
+abstain_on_conflict = true    # same label + period with two values in the evidence
+period_mismatch_penalty = 0.6

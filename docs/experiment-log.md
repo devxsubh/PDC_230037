@@ -191,3 +191,28 @@
 - **Artifact (ignored by Git):** `data/processed/generator-t5-base-dev-v1_dev_iteration1_candidates.jsonl` (4 candidates per record and setting).
 - **Limitations:** dev only, one checkpoint and seed; the chosen setting was picked among 6 on dev. Decode wall-clock times are invalid as latency (the machine was suspended mid-run).
 - **Decision:** H1 rejected (fewer facts lose more recall than they save in distractors). H2 supported: adopt top 5 facts + grounded beam selection as the current pipeline (dev 0.6195, up from 0.5923). Next: retrain with retrieved-style hard distractors on a GPU.
+
+## 2026-11-21 — Agentic research assistant vs the single-pass pipeline, dev (`finevidence-agent evaluate`)
+
+- **Question:** Do task planning, iterative retrieval, verification and abstention make FinEvidence's answers more accurate, more reliable and better supported than the single-pass pipeline, and at what efficiency cost?
+- **Data and protocol:** pinned train and dev splits (SHA-256 verified by `python -m finevidence.data.acquisition`). Planner rules and template logic were written from train questions. The abstention policy (`min_confidence`, `ambiguity_margin`, `max_rounds`) was chosen by grid search on train records 1000–1999. Test was not loaded. Dev labels are read only by the scorer, after each answer is fixed.
+- **Systems:** existing pipeline (Notebook 08 conservative arithmetic with BM25 top 3); `agent-single-pass-v1`; `agent-no-abstention-v1`; `agent-offline-v1` (configs `agent_single_pass.toml`, `agent_no_abstention.toml`, `agent_offline.toml`). All are deterministic; no seed is involved.
+- **Train selection (records 1000–1999):** at 3 rounds and margin 0.01, raising `min_confidence` from 0.4 to 0.6 moved selective accuracy from 0.361 to 0.399, with execution accuracy 0.221 → 0.213. One round instead of three lowered execution accuracy (0.206 vs 0.221 at 0.4). Chosen: 3 rounds, margin 0.01, `min_confidence` 0.60.
+- **Command:** `.venv/bin/finevidence-agent evaluate --split dev --results data/processed/agent/dev_comparison.json`; Apple M2 CPU, Python 3.12.13; code: working tree on top of `a03599d` (uncommitted at run time).
+- **First dev run:** full agent 0.2072 execution accuracy, coverage 0.5198, selective 0.3987, wrong-answer rate 0.3126; single pass 0.2276; no abstention 0.2525. Inspecting dev record 0 then showed an average taken across unlike columns (volume, transactions, cards). Sums and averages without named periods were restricted to dated, like-for-like columns (`_is_period_series`, tested), the change was re-checked on train (full agent 0.213, selective 0.410), and dev was run a second time. This is a protocol deviation: one dev example informed a correctness fix.
+- **Observed results (second and final dev run, 883 records):**
+
+  | System | Exec acc [95% CI] | Coverage | Selective | Wrong-answer rate | Cites all gold | Tool calls | ms / q |
+  | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+  | Pipeline (conservative arithmetic) | 0.0396 [0.0283, 0.0532] | 0.3216 | 0.1232 | 0.2820 | 0.3908 | 1.0 | 0.5 |
+  | Agent, single pass | 0.2254 [0.1982, 0.2525] | 0.7055 | 0.3194 | 0.4802 | 0.5169 | 5.5 | 0.9 |
+  | Agent, no abstention | 0.2492 [0.2220, 0.2775] | 0.7622 | 0.3269 | 0.5130 | 0.5007 | 6.5 | 1.4 |
+  | **Agent (full)** | 0.2050 [0.1789, 0.2333] | 0.5074 | **0.4040** | **0.3024** | **0.5960** | 8.8 | 2.2 |
+
+  - The pipeline reproduces Notebook 08's 35/883 execution-correct count.
+  - Iteration and verification vs single pass: 23 fixed, 2 broken (exact McNemar p ≈ 2e-5).
+  - Full agent vs single pass: 166 wrong answers avoided, 9 added (p ≈ 2e-38); 14 correct gained, 32 lost to abstention (p = 0.011).
+  - Full-agent abstentions (435): low confidence 149, insufficient evidence 109, unsupported 96, ambiguous 76, failed verification 5, conflicting evidence 0.
+- **Artifacts (ignored by Git):** `data/processed/agent/<system>_dev_answers.jsonl` (one full answer per record: plan, citations, calculation, checks, tool log) and `data/processed/agent/dev_comparison.json`.
+- **Limitations:** the template proposer, not the agentic loop, caps absolute accuracy (about 25%, against 61.95% for the T5 pipeline). The agent over T5 beams (`configs/agent_generator.toml`) has not been run, because the Notebook 10 rankings and Notebook 14 candidates are not on this machine. Confidence is a heuristic support score, not a calibrated probability. The conflict check did not fire on dev.
+- **Decision:** adopt `agent-offline-v1` as the offline agent. Next: run `agent_generator.toml` on the saved T5 artifacts to compare the agent with the 61.95% pipeline under identical generation.

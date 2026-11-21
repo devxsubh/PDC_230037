@@ -1,0 +1,19 @@
+# Ablation: the same planner and template proposer as agent_offline.toml, run as a single
+# pass: one retrieval round, no verification, no abstention (the top candidate is answered).
+# It isolates what iterative retrieval, verification and abstention contribute.
+experiment_name = "agent-single-pass-v1"
+
+[agent]
+retriever = "bm25"
+proposer = "template"
+
+[retrieval]
+initial_k = 5
+k_step = 0
+max_rounds = 1
+
+[verification]
+verify = false
+
+[abstention]
+abstain = false

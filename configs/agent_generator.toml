@@ -1,0 +1,25 @@
+# The full agent over the trained models' saved outputs: Notebook 10 cross-encoder rankings
+# and Notebook 14 T5 beam candidates (top 5 facts, 4 beams). Pass the artifacts with
+# --rankings and --beams. Same verification and abstention policy as agent_offline.toml.
+# The saved ranking is query-independent, so later rounds widen k but do not re-rank.
+experiment_name = "agent-generator-v1"
+
+[agent]
+retriever = "ranking-file"
+proposer = "generator-beams"
+
+[retrieval]
+initial_k = 5
+k_step = 5
+max_rounds = 2
+
+[verification]
+verify = true
+max_candidates_verified = 12
+
+[abstention]
+abstain = true
+min_confidence = 0.60
+ambiguity_margin = 0.01
+abstain_on_conflict = true
+period_mismatch_penalty = 0.6

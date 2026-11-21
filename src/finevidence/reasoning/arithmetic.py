@@ -193,12 +193,15 @@ def reason_over_candidates(question: str, candidates: list[NumericCandidate]) ->
             hypothesis, (left, right), None, (left.source_id, right.source_id), "zero denominator"
         )
 
-    result = {
-        Operation.ADD: left.value + right.value,
-        Operation.SUBTRACT: left.value - right.value,
-        Operation.MULTIPLY: left.value * right.value,
-        Operation.DIVIDE: left.value / right.value,
-    }[hypothesis.operation]
+    # Only the chosen operation is evaluated: computing all four eagerly raised
+    # DivisionByZero for non-division questions whose second operand is zero.
+    operations = {
+        Operation.ADD: lambda: left.value + right.value,
+        Operation.SUBTRACT: lambda: left.value - right.value,
+        Operation.MULTIPLY: lambda: left.value * right.value,
+        Operation.DIVIDE: lambda: left.value / right.value,
+    }
+    result = operations[hypothesis.operation]()
     return ReasoningTrace(hypothesis, (left, right), result, (left.source_id, right.source_id))
 
 

@@ -34,6 +34,9 @@ model = [
   "papermill>=2.5",
 ]
 
+[project.scripts]
+finevidence-agent = "finevidence.agent.cli:main"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/finevidence"]
 
